@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Vẽ Tròn – Smooth Fantasy</title>
+
+<!-- Fonts mẫu (có thể chỉnh trong CONFIG) -->
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;800;900&family=Marcellus&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  /* sẽ được gán bởi JS từ CONFIG */
+  --bg1:url('');
+  --bg2:url('');
+  --font-heading:"Cinzel", ui-serif, Georgia, serif;
+  --font-body:"Marcellus", ui-serif, Georgia, serif;
+
+  /* màu */
+  --ink:#ece9ff; --muted:#b9b3de;
+  --glass:rgba(30,20,62,.55); --border:#4b3d80aa;
+  --good:#2be9d4; --warn:#ffd76a; --bad:#ff6a8e;
+  --accent-1:#ff6aa3; --accent-2:#9b6bff;
+  --neon:#b96bff; --neon-pink:#ff7cd0;
+}
+
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0; color:var(--ink); font-family:var(--font-body);
+  /* NỀN 1 – toàn trang (dưới cùng) */
+  background:
+    linear-gradient(180deg,#0a0e18aa,#0a0e18aa),
+    var(--bg1) center/cover fixed no-repeat;
+  display:grid; place-items:center;
+}
+body::before{
+  content:""; position:fixed; inset:0; pointer-events:none; z-index:0;
+  background:
+    radial-gradient(1000px 600px at 55% 0%, #82cfff22, transparent 60%),
+    radial-gradient(900px 520px at 20% 120%, #0aa0ff14, transparent 60%);
+}
+
+.wrap{
+  width:min(1000px,94vw); position:relative; z-index:1;
+  padding:18px 18px 22px; border-radius:24px;
+  background:var(--glass); border:1px solid var(--border);
+  box-shadow:0 24px 90px #000b, inset 0 0 0 1px #ffffff08;
+  backdrop-filter: blur(10px) saturate(120%);
+}
+.wrap::before{
+  content:""; position:absolute; inset:-1px; border-radius:24px; padding:1px;
+  background:linear-gradient(135deg,#ffffff10,#a68aff33 25%,#ff7cc933 55%,#68e5ff22 85%);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor; mask-composite:exclude; pointer-events:none;
+}
+
+h1{
+  margin:2px 0 6px; font-family:var(--font-heading); font-weight:900;
+  letter-spacing:.5px; font-size:clamp(22px,2.8vw,32px);
+  text-shadow:0 2px 0 #0008, 0 0 22px #7c5dff55;
+}
+.sub{color:var(--muted); margin-bottom:12px}
+
+.hud{display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:12px}
+.badge{
+  padding:7px 11px; border-radius:999px;
+  background:linear-gradient(180deg,#19143b,#140f2f);
+  border:1px solid #3c2f71; font-size:13px; box-shadow:inset 0 1px 0 #ffffff0d;
+}
+.acc{font-weight:800}
+.acc.good{color:var(--good)} .acc.mid{color:var(--warn)} .acc.bad{color:var(--bad)}
+
+.btns{display:flex; gap:10px; flex-wrap:wrap; margin-top:12px}
+button{
+  appearance:none; cursor:pointer; font-weight:700; color:#fff;
+  border-radius:999px; padding:11px 16px; border:1px solid #ff9bd6aa;
+  background:linear-gradient(135deg,var(--accent-1),var(--accent-2));
+  box-shadow:0 8px 24px #0007; transition:transform .12s, box-shadow .12s, filter .12s;
+}
+button:hover{transform:translateY(-1px); box-shadow:0 10px 28px #0008, 0 0 24px 2px #c891ff33}
+button:active{transform:translateY(0); filter:brightness(.95)}
+button.ghost{background:#19133e; border:1px solid #3f2f74}
+
+.range{
+  appearance:none; width:160px; height:6px; border-radius:999px; outline:none;
+  background:linear-gradient(90deg,#ffffff55,#ffffff22);
+}
+.range::-webkit-slider-thumb{appearance:none; width:16px; height:16px; border-radius:50%;
+  background:linear-gradient(135deg,var(--accent-1),var(--accent-2)); border:1px solid #fff3; box-shadow:0 0 10px #c891ff77}
+
+/* NỀN 2 – bên trong khung vẽ */
+.stage{
+  position:relative; border-radius:16px; overflow:hidden;
+  border:1px solid #3b2d6d; box-shadow:0 14px 50px #000a;
+  background:
+    linear-gradient(180deg,#0b0f2acc,#0b0f2a88),
+    var(--bg2) center/cover no-repeat;
+}
+.stage::after{
+  content:""; position:absolute; inset:0; pointer-events:none;
+  background:radial-gradient(600px 360px at 70% 12%, #1b2c55aa, transparent 62%);
+}
+canvas{
+  display:block; width:100%; height:auto; background:transparent;
+  border-radius:16px; touch-action:none; outline:1px solid #ffffff0a;
+}
+.hint{margin-top:8px; color:var(--muted); font-size:12px}
+
+/* Winner banner */
+.winner{
+  position:fixed; inset:20px auto auto 50%; transform:translateX(-50%);
+  padding:12px 16px; border-radius:14px;
+  background:linear-gradient(180deg,#0f1d38cc,#0a1530cc);
+  color:#c8fff4; border:1px solid #2b8a82;
+  box-shadow:0 10px 40px #0009, 0 0 24px #37ffd944;
+  font-weight:900; letter-spacing:.3px; display:none; z-index:1100;
+}
+
+/* Shock overlay */
+.shock{position:fixed; inset:0; display:none; place-items:center; z-index:1200; pointer-events:none}
+.shock .flash{position:absolute; inset:0; background:radial-gradient(900px 520px at 50% 35%,#ffffff2a,transparent 65%); animation:flash .38s ease-out 1}
+@keyframes flash{from{opacity:1} to{opacity:0}}
+.shock .crack{position:absolute; inset:0; opacity:.85; filter:drop-shadow(0 0 8px #fff)}
+.shock .boom{
+  position:relative; font-family:var(--font-heading); font-size:clamp(28px,4.6vw,60px);
+  font-weight:900; letter-spacing:1px; color:#fff;
+  text-shadow:0 0 10px var(--neon), 0 0 24px var(--neon), 0 0 40px var(--neon-pink), 0 4px 0 #0009;
+  animation:pop .45s ease-out 1;
+}
+@keyframes pop{0%{transform:scale(.72);opacity:.3}100%{transform:scale(1);opacity:1}}
+
+/* Modal */
+.modal-backdrop{position:fixed; inset:0; background:#0009; display:none; align-items:center; justify-content:center; z-index:1300}
+.modal{width:min(460px,92vw); background:linear-gradient(180deg,#18133b,#100d2a); border:1px solid #4a3a82; border-radius:16px; padding:18px; box-shadow:0 22px 80px #000c, inset 0 0 0 1px #ffffff08}
+.modal h2{margin:0 0 8px; font-family:var(--font-heading); font-weight:800; letter-spacing:.3px; text-shadow:0 2px 0 #0008}
+.modal p{color:var(--muted); margin-top:0}
+.modal input{width:100%; padding:11px 12px; border-radius:10px; border:1px solid #3f2f74; background:#110f29; color:var(--ink); outline:none; margin:8px 0 14px; box-shadow:inset 0 1px 0 #ffffff10}
+
+/* Leaderboard */
+.board{margin-top:16px}
+table{width:100%; border-collapse:collapse; font-size:14px}
+th,td{ text-align:left; padding:9px 10px; border-bottom:1px solid #2e2a58 }
+th{ color:#e4dcff; background:linear-gradient(180deg,#1a1340,#140f32); position:sticky; top:0; z-index:2; border-bottom-color:#3c3272 }
+tbody tr:hover{ background:#161339 }
+.me{ background:#1a1744 }
+h3{ font-family:var(--font-heading); margin:14px 0 6px; letter-spacing:.3px }
+</style>
+</head>
+<body>
+  <div class="winner" id="winner">🏆 Bạn là người chiến thắng</div>
+
+  <!-- Shock overlay -->
+  <div class="shock" id="shock">
+    <div class="flash"></div>
+    <svg class="crack" viewBox="0 0 100 100" preserveAspectRatio="none">
+      <g stroke="#ffffffcc" stroke-width="0.8" fill="none">
+        <path d="M50 10 L52 25 L48 40 L54 55 L46 70 L53 86" />
+        <path d="M50 40 L62 48 L74 56" />
+        <path d="M50 60 L36 70 L22 80" />
+      </g>
+    </svg>
+    <div class="boom"><b>KHÔNG THỂ TIN NỔI</b></div>
+  </div>
+
+  <!-- Modal tên -->
+  <div class="modal-backdrop" id="nameModal">
+    <div class="modal">
+      <h2>Nhập tên của bạn</h2>
+      <p>Tên sẽ dùng để lưu điểm lên bảng xếp hạng.</p>
+      <input id="playerNameInput" type="text" placeholder="Ví dụ: Anh Phương" maxlength="32"/>
+      <div style="display:flex; gap:10px; justify-content:flex-end">
+        <button id="cancelName" class="ghost">Để sau</button>
+        <button id="saveName">Bắt đầu</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <h1>ENTER THE <span style="letter-spacing:1px">WORLD OF CIRCLE</span></h1>
+    <div class="sub">Giữ chuột (hoặc chạm) để vẽ một vòng tròn. Thả ra để xem % độ tròn.</div>
+
+    <div class="hud">
+      <div class="badge">Người chơi: <span id="playerName">—</span></div>
+      <div class="badge">Điểm: <span id="acc" class="acc">—</span></div>
+      <div class="badge">Best của bạn: <span id="best">—</span></div>
+      <div class="badge">Bán kính ước tính: <span id="rad">—</span> px</div>
+      <div class="badge">Số điểm mẫu: <span id="npts">0</span></div>
+      <div class="badge" style="display:flex;gap:8px;align-items:center">
+        <button id="bgmToggle" class="ghost">Bật nhạc ♪</button>
+        <input id="bgmVol" class="range" type="range" min="0" max="1" step="0.01" value="0.35" title="Âm lượng"/>
+      </div>
+    </div>
+
+    <!-- NỀN 2: bọc canvas -->
+    <div class="stage">
+      <canvas id="cv" width="900" height="520"></canvas>
+      <audio id="bgm" loop preload="auto"></audio>
+    </div>
+
+    <div class="btns">
+      <button id="reset">Xoá & vẽ lại ↻</button>
+      <button id="fitNow">Tính lại % ngay</button>
+      <button id="changeName">Đổi tên</button>
+    </div>
+
+    <div class="hint">
+      <b>Màu bút</b>: &lt;80% = đỏ • 80–90% = đỏ→vàng • 90–95% = vàng→xanh lá (glow) • 95–100% = xanh lá→tím neon (glow mạnh).
+      &nbsp;&nbsp;&gt;93% phát âm; &gt;94% hiệu ứng “vỡ màn hình”.
+    </div>
+
+    <div class="board">
+      <h3>🏅 Bảng xếp hạng (Top 10 gần đây)</h3>
+      <div style="max-height:220px; overflow:auto; border:1px solid #3a2f70; border-radius:12px;">
+        <table id="leaderTable">
+          <thead><tr><th>#</th><th>Tên</th><th>Điểm</th><th>Thời gian</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* ==================== CONFIG – sửa ở đây ==================== */
+const CONFIG = {
+  assets: {
+    bg1: 'bg-forest.jpg',   // nền 1 (toàn trang)
+    bg2: 'bg-forest.jpg',   // nền 2 (khung vẽ)
+    bgm: 'bgm.mp3'          // nhạc nền
+  },
+  fonts: {
+    heading: "'Cinzel', ui-serif, Georgia, serif",
+    body:    "'Marcellus', ui-serif, Georgia, serif"
+  }
+};
+// apply variables + audio src
+document.documentElement.style.setProperty('--bg1', `url('${CONFIG.assets.bg1}')`);
+document.documentElement.style.setProperty('--bg2', `url('${CONFIG.assets.bg2}')`);
+document.documentElement.style.setProperty('--font-heading', CONFIG.fonts.heading);
+document.documentElement.style.setProperty('--font-body', CONFIG.fonts.body);
+
+/* ==================== Helpers & Colors ==================== */
+const clamp=(x,a,b)=>Math.min(Math.max(x,a),b);
+const hexToRgb = h => [parseInt(h.slice(1,3),16), parseInt(h.slice(3,5),16), parseInt(h.slice(5,7),16)];
+const rgbToHex = (r,g,b)=>'#'+[r,g,b].map(v=>v.toString(16).padStart(2,'0')).join('');
+const lerp = (a,b,t)=>a+(b-a)*t;
+const lerpColor = (c1,c2,t)=> rgbToHex(
+  Math.round(lerp(c1[0],c2[0],t)),
+  Math.round(lerp(c1[1],c2[1],t)),
+  Math.round(lerp(c1[2],c2[2],t))
+);
+
+const RED     = hexToRgb('#ff6a8e');
+const YELLOW  = hexToRgb('#ffd76a');
+const GREEN   = hexToRgb('#2be9d4');
+const NEONPUR = hexToRgb('#b96bff');
+
+function brushStyleFromAcc(acc){
+  const a = clamp(acc, 0, 100);
+  if (a < 80) return { color: rgbToHex(...RED), blur: 0 };
+  if (a < 90) { const t = (a - 80)/10; return { color: lerpColor(RED, YELLOW, t), blur: 0 }; }
+  if (a < 95) { const t = (a - 90)/5;  return { color: lerpColor(YELLOW, GREEN, t), blur: 12 + t*12 }; }
+  { const t = (a - 95)/5; return { color: lerpColor(GREEN, NEONPUR, t), blur: 22 + t*28 }; }
+}
+
+/* ===== Smooth helpers: resample + CatmullRom → Bézier + neon renderer ===== */
+function resample(pts, step=1.8){
+  const s = Math.max(0.5, step);
+  if (pts.length < 2) return pts.slice();
+  const out=[{...pts[0]}]; let acc=0; let a = out[0];
+
+  for (let i=1;i<pts.length;i++){
+    const b = pts[i];
+    let dx=b.x-a.x, dy=b.y-a.y, d=Math.hypot(dx,dy);
+    if (d===0){ a=b; continue; }
+
+    while (acc + d >= s){
+      const t = (s - acc) / d;
+      const nx = a.x + dx*t, ny = a.y + dy*t;
+      out.push({x:nx,y:ny});
+      a = out[out.length-1];
+      dx = b.x - a.x; dy = b.y - a.y; d = Math.hypot(dx,dy); acc = 0;
+      if (out.length > 20000) break; // safety
+    }
+    acc += d; a = b;
+  }
+
+  if (out.length<pts.length) out.push({...pts[pts.length-1]});
+  if (out.length > 4000) out.splice(0, out.length - 4000);
+  return out;
+}
+function catmullRomToBezier(pts, tension=0.7){
+  const n = pts.length; if (n<2) return null;
+  const segs=[];
+  for (let i=0;i<n-1;i++){
+    const p0 = pts[i-1] || pts[i], p1 = pts[i], p2 = pts[i+1] || pts[i], p3 = pts[i+2] || p2;
+    const c1x = p1.x + (p2.x - p0.x) * (tension/6);
+    const c1y = p1.y + (p2.y - p0.y) * (tension/6);
+    const c2x = p2.x - (p3.x - p1.x) * (tension/6);
+    const c2y = p2.y - (p3.y - p1.y) * (tension/6);
+    segs.push({c1x,c1y,c2x,c2y,x:p2.x,y:p2.y});
+  }
+  return {start: pts[0], segs};
+}
+function drawSmoothStroke(ctx, pts, color, coreWidth=3, glow=20){
+  if (pts.length<2) return;
+  const uniform = resample(pts, 1.8);
+  const path = catmullRomToBezier(uniform, 0.7); if (!path) return;
+
+  ctx.beginPath(); ctx.moveTo(path.start.x, path.start.y);
+  for (const s of path.segs) ctx.bezierCurveTo(s.c1x,s.c1y,s.c2x,s.c2y,s.x,s.y);
+  ctx.lineJoin='round'; ctx.lineCap='round';
+
+  // glow pass
+  const prev = ctx.globalCompositeOperation;
+  ctx.globalCompositeOperation = 'lighter';
+  ctx.strokeStyle = color; ctx.shadowColor = color;
+  ctx.shadowBlur = Math.min(32, glow);
+  ctx.lineWidth = coreWidth + ctx.shadowBlur*0.35;
+  ctx.globalAlpha = 0.75;
+  ctx.stroke();
+
+  // core pass
+  ctx.shadowBlur = 0; ctx.globalAlpha = 1; ctx.globalCompositeOperation='source-over';
+  ctx.lineWidth = coreWidth; ctx.strokeStyle = color; ctx.stroke();
+
+  // sheen
+  ctx.globalAlpha = 0.22; ctx.lineWidth = Math.max(1, coreWidth*0.45); ctx.strokeStyle = '#fff'; ctx.stroke();
+  ctx.globalAlpha = 1; ctx.globalCompositeOperation = prev;
+}
+
+/* ==================== Circle fit & scoring ==================== */
+function solve3(A,b){
+  const det = (m)=>( m[0][0]*(m[1][1]*m[2][2]-m[1][2]*m[2][1]) - m[0][1]*(m[1][0]*m[2][2]-m[1][2]*m[2][0]) + m[0][2]*(m[1][0]*m[2][1]-m[1][1]*m[2][0]) );
+  const D = det(A); if (Math.abs(D)<1e-9) return null;
+  const rep=(col)=>A.map((r,i)=>r.map((v,j)=> j===col? b[i] : v));
+  const Dx = det(rep(0)), Dy = det(rep(1)), Dz = det(rep(2));
+  return [Dx/D, Dy/D, Dz/D];
+}
+function fitCircleKasa(pts){
+  const n=pts.length; if(n<6) return null;
+  let Sx=0,Sy=0,Sxx=0,Syy=0,Sxy=0,Sz=0,Sxz=0,Syz=0;
+  for(const p of pts){
+    const x=p.x, y=p.y, z=x*x+y*y;
+    Sx+=x; Sy+=y; Sxx+=x*x; Syy+=y*y; Sxy+=x*y;
+    Sz+=z; Sxz+=x*z; Syz+=y*z;
+  }
+  const A = [[Sxx,Sxy,Sx],[Sxy,Syy,Sy],[Sx,Sy,n]];
+  const bb = [Sxz,Syz,Sz];
+  const sol = solve3(A,bb); if(!sol) return null;
+  const [A1,B1,C1] = sol; const a = A1/2, b0 = B1/2;
+  const R2 = a*a + b0*b0 + C1; if (R2<=0) return null;
+  return {cx:a, cy:b0, r:Math.sqrt(R2)};
+}
+function angularCoverage(pts, cx, cy){
+  const angs = pts.map(p => Math.atan2(p.y - cy, p.x - cx)).sort((a,b)=>a-b);
+  if (angs.length < 2) return 0;
+  let maxGap = 0;
+  for (let i=0;i<angs.length-1;i++) maxGap = Math.max(maxGap, angs[i+1]-angs[i]);
+  maxGap = Math.max(maxGap, (Math.PI*2 - (angs[angs.length-1]-angs[0])));
+  return Math.min(Math.max(1 - maxGap/(Math.PI*2), 0), 1);
+}
+function accuracyScore(pts, circle){
+  const {cx,cy,r} = circle; let s=0;
+  for(const p of pts){ const d = Math.hypot(p.x-cx, p.y-cy); const e = d - r; s += e*e; }
+  const rms = Math.sqrt(s/pts.length);
+  const shape = Math.min(Math.max(1 - (rms / (0.25*r || 1)), 0), 1);
+  const coverage = angularCoverage(pts, cx, cy);
+  const acc = (0.7*shape + 0.3*coverage) * 100;
+  return {acc: Math.round(acc), rms, coverage, shape};
+}
+
+/* ==================== Canvas, Input & RAF ==================== */
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
+const accEl = document.getElementById('acc');
+const radEl = document.getElementById('rad');
+const nptsEl = document.getElementById('npts');
+const bestEl = document.getElementById('best');
+const resetBtn = document.getElementById('reset');
+const fitBtn = document.getElementById('fitNow');
+const winner = document.getElementById('winner');
+const shock = document.getElementById('shock');
+
+const playerNameEl = document.getElementById('playerName');
+const changeNameBtn = document.getElementById('changeName');
+const nameModal = document.getElementById('nameModal');
+const nameInput = document.getElementById('playerNameInput');
+const saveNameBtn = document.getElementById('saveName');
+const cancelNameBtn = document.getElementById('cancelName');
+const leaderTable = document.querySelector('#leaderTable tbody');
+
+let drawing=false, pts=[];
+let activePointerId=null;
+let needsRedraw=false, livePreview=false;
+
+function scaleCanvas(){
+  const dpr = window.devicePixelRatio || 1;
+  const cssW = cv.clientWidth, cssH = cv.clientHeight;
+  if (!cssW || !cssH) return;
+  cv.width = Math.round(cssW * dpr);
+  cv.height = Math.round(cssH * dpr);
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  needsRedraw = true;
+}
+window.addEventListener('resize', scaleCanvas);
+setTimeout(scaleCanvas, 0);
+
+function clear(){ ctx.clearRect(0,0,cv.width,cv.height); }
+
+function redraw(live=false){
+  clear(); nptsEl.textContent = String(pts.length);
+  let liveAcc = null, rShown = null;
+  if(live && pts.length>=6){
+    const circle = fitCircleKasa(pts);
+    if(circle){ const {acc} = accuracyScore(pts, circle); liveAcc = acc; rShown = circle.r; showHUD(acc, circle.r); }
+  }
+  drawStroke(liveAcc);
+  if(rShown) radEl.textContent = rShown.toFixed(1);
+}
+
+function loop(){
+  if (needsRedraw){
+    redraw(livePreview);
+    needsRedraw = false;
+  }
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+function getPos(e){
+  const rect=cv.getBoundingClientRect();
+  return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+}
+function begin(e){
+  e.preventDefault();
+  if (drawing) return;
+  drawing=true; pts=[getPos(e)];
+  if (e.pointerId !== undefined){ activePointerId = e.pointerId; cv.setPointerCapture(e.pointerId); }
+  livePreview = true; needsRedraw = true;
+  unlockBgmOnce();
+}
+function move(e){
+  if(!drawing) return;
+  if (e.pointerId !== undefined && activePointerId!==null && e.pointerId!==activePointerId) return;
+  e.preventDefault();
+  let p = getPos(e);
+  if (pts.length){ const q = pts[pts.length-1]; p = {x:q.x*0.8+p.x*0.2, y:q.y*0.8+p.y*0.2}; } // low-pass
+  pts.push(p);
+  livePreview = true; needsRedraw = true;
+}
+function end(e){
+  if(!drawing) return;
+  e.preventDefault(); drawing=false;
+  if (e.pointerId !== undefined && activePointerId!==null){ try{ cv.releasePointerCapture(activePointerId); }catch(_){ } activePointerId=null; }
+  livePreview = false; needsRedraw = true;
+  computeAndFinish();
+}
+
+cv.addEventListener('pointerdown', begin, {passive:false});
+cv.addEventListener('pointermove', move,   {passive:false});
+window.addEventListener('pointerup', end,  {passive:false});
+
+function drawStroke(liveAcc=null){
+  if(pts.length<2) return;
+  const style = (liveAcc==null) ? {color:'#e6e1ff', blur:0} : brushStyleFromAcc(liveAcc);
+  const core = 2.6 + (liveAcc ? (liveAcc-75)*0.035 : 0);
+  const glow = (liveAcc ? style.blur : 10) + 6;
+  drawSmoothStroke(ctx, pts, style.color, core, glow);
+}
+function drawCenter(cx,cy){
+  ctx.fillStyle='#ffd76a'; ctx.beginPath(); ctx.arc(cx, cy, 3.5, 0, Math.PI*2); ctx.fill();
+}
+function showHUD(acc, r){
+  if (acc===undefined){ accEl.textContent='—'; accEl.className='acc'; }
+  else{ accEl.textContent = acc.toFixed(0) + '%'; accEl.className = 'acc ' + (acc>=90?'good':acc>=80?'mid':'bad'); }
+  radEl.textContent = r ? r.toFixed(1) : '—';
+}
+function triggerShock(){ shock.style.display='grid'; setTimeout(()=>{ shock.style.display='none'; }, 720); }
+function computeAndFinish(){
+  redraw(false);
+  const circle = fitCircleKasa(pts);
+  if(circle){
+    drawCenter(circle.cx, circle.cy);
+    const {acc} = accuracyScore(pts, circle);
+    showHUD(acc, circle.r);
+    drawStroke(acc);
+    if(acc >= 90){ winner.style.display='block'; setTimeout(()=> winner.style.display='none', 2000); }
+    if(acc > 93){ playWin(); }
+    if(acc > 94){ triggerShock(); }
+    const name = getPlayerName();
+    if(name){ saveScore(name, acc); updateBoard(name); updateBest(name); }
+  }else{ showHUD(0, 0); }
+}
+
+/* ==================== Player & Leaderboard ==================== */
+const LS_NAME = 'circle_player_name';
+const LS_BOARD = 'circle_leaderboard_v1';
+function getPlayerName(){ return localStorage.getItem(LS_NAME) || ''; }
+function setPlayerName(n){ localStorage.setItem(LS_NAME, n || ''); playerNameEl.textContent = n || '—'; }
+function getBoard(){ try{ return JSON.parse(localStorage.getItem(LS_BOARD) || '[]'); }catch(_){ return []; } }
+function setBoard(arr){ localStorage.setItem(LS_BOARD, JSON.stringify(arr)); }
+function saveScore(name, score){
+  const arr = getBoard(); arr.push({name, score: Math.round(score), ts: Date.now()});
+  if(arr.length > 200) arr.splice(0, arr.length-200); setBoard(arr);
+}
+function updateBoard(currentName){
+  const arr = getBoard().slice().sort((a,b)=> b.score - a.score || b.ts - a.ts).slice(0,10);
+  leaderTable.innerHTML = '';
+  arr.forEach((it, i)=>{
+    const tr = document.createElement('tr'); if(it.name === currentName) tr.classList.add('me');
+    const d = new Date(it.ts);
+    tr.innerHTML = `<td>${i+1}</td><td>${it.name}</td><td>${it.score}%</td><td>${d.toLocaleString()}</td>`;
+    leaderTable.appendChild(tr);
+  });
+}
+function updateBest(name){
+  const arr = getBoard().filter(x=>x.name===name);
+  const best = arr.length ? Math.max(...arr.map(x=>x.score)) : null;
+  bestEl.textContent = (best==null) ? '—' : (best + '%');
+}
+
+/* ==================== Audio (SFX + BGM file) ==================== */
+let audioCtx=null;
+function ensureAudio(){ if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)(); return audioCtx; }
+function playWin(){
+  try{
+    const ctx = ensureAudio(); const now = ctx.currentTime;
+    const gain = ctx.createGain(); gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.55, now+0.03);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now+0.5);
+    const o1 = ctx.createOscillator(); o1.type='triangle'; o1.frequency.setValueAtTime(880, now);
+    const o2 = ctx.createOscillator(); o2.type='sine'; o2.frequency.setValueAtTime(1320, now+0.22);
+    o1.connect(gain); o2.connect(gain); gain.connect(ctx.destination);
+    o1.start(now); o1.stop(now+0.32); o2.start(now+0.22); o2.stop(now+0.52);
+  }catch(_){}
+}
+const bgmEl = document.getElementById('bgm'); bgmEl.src = CONFIG.assets.bgm;
+const bgmToggle = document.getElementById('bgmToggle'); const bgmVol = document.getElementById('bgmVol');
+const LS_BGM_EN='circle_bgm_enabled', LS_BGM_VOL='circle_bgm_vol';
+
+function setBgmUi(){ bgmToggle.textContent = (bgmEl.paused ? 'Bật nhạc ♪' : 'Tắt nhạc ⏸'); }
+async function ensureBgmUnlocked(){ try{ if(bgmEl.src && bgmEl.paused){ await bgmEl.play(); } }catch(_){} setBgmUi(); }
+function initBgm(){
+  const v = parseFloat(localStorage.getItem(LS_BGM_VOL) || '0.35');
+  bgmEl.volume = Math.max(0, Math.min(1, isNaN(v) ? 0.35 : v));
+  bgmVol.value = String(bgmEl.volume);
+  const enabled = localStorage.getItem(LS_BGM_EN) !== '0';
+  if (!enabled) { bgmEl.pause(); }
+  setBgmUi();
+  const unlock = ()=>{ if (localStorage.getItem(LS_BGM_EN) !== '0') ensureBgmUnlocked();
+    window.removeEventListener('pointerdown', unlock); window.removeEventListener('keydown', unlock); };
+  window.addEventListener('pointerdown', unlock, {once:true});
+  window.addEventListener('keydown', unlock, {once:true});
+}
+bgmToggle.addEventListener('click', async ()=>{
+  if (bgmEl.paused){ localStorage.setItem(LS_BGM_EN,'1'); try{ await bgmEl.play(); }catch(_){} }
+  else{ bgmEl.pause(); localStorage.setItem(LS_BGM_EN,'0'); }
+  setBgmUi();
+});
+bgmVol.addEventListener('input', ()=>{
+  const v = parseFloat(bgmVol.value || '0.35');
+  bgmEl.volume = Math.max(0, Math.min(1, v));
+  localStorage.setItem(LS_BGM_VOL, String(bgmEl.volume));
+});
+function unlockBgmOnce(){ if (localStorage.getItem(LS_BGM_EN) !== '0') ensureBgmUnlocked(); }
+
+/* ==================== Modal & Init ==================== */
+function showNameModal(show=true){
+  nameModal.style.display = show ? 'flex' : 'none';
+  if(show){ nameInput.value = getPlayerName() || ''; nameInput.focus(); }
+}
+saveNameBtn.onclick = ()=>{ const n = nameInput.value.trim() || 'Người chơi'; setPlayerName(n); updateBoard(n); updateBest(n); showNameModal(false); };
+cancelNameBtn.onclick = ()=>{ showNameModal(false); };
+changeNameBtn.onclick = ()=> showNameModal(true);
+
+(function init(){
+  const n = getPlayerName();
+  if(!n){ showNameModal(true); } else { setPlayerName(n); }
+  updateBoard(getPlayerName()); updateBest(getPlayerName()); scaleCanvas();
+  initBgm();
+})();
+</script>
+</body>
+</html>
