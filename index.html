@@ -270,7 +270,8 @@ tbody tr:hover{ background:#161339 }
     <!-- CỘT TRÁI -->
     <div>
       <p class="story">
-        Luyện tập chính là chìa khóa để trở thành chúa tể phép thuật. Bí kíp nằm ở hơi thở và vẽ sao cho thật tròn!
+        Bạn bị mắc kẹt trong khu rừng ma quỷ. Cách duy nhất để thoát ra khỏi khu rừng này là sử dụng phép thuật vòng tròn không gian.
+		Tôi biết bạn là pháp sư giỏi! Hãy cố gắng đạt 1500 điểm để sống sót rời khỏi khu rừng này nhé! 
       </p>
 
       <!-- HUD -->
@@ -280,6 +281,7 @@ tbody tr:hover{ background:#161339 }
         <div class="badge">Tổng điểm: <span id="totalScore">0</span></div>
         <div class="badge" style="display:flex;gap:8px;align-items:center">
           <button id="bgmToggle" class="ghost">Tắt nhạc ⏸</button>
+          <button id="bgmNext" class="ghost" title="Bài tiếp theo">Next ▶</button>
           <input id="bgmVol" class="range" type="range" min="0" max="1" step="0.01" value="0.5" title="Âm lượng"/>
         </div>
         <div class="badge" style="display:flex;gap:8px;align-items:center; display:none;">
@@ -392,7 +394,7 @@ tbody tr:hover{ background:#161339 }
 <div class="welcome-backdrop" id="welcome">
   <div class="welcome">
     <img id="welcomeIcon" alt="icon"/>
-    <h2 id="welcomeTitle">Chào mừng đến Vẽ Tròn – 10 Lượt</h2>
+    <h2 id="welcomeTitle">Welcome To Circle of the Dark Forest</h2>
     <p id="welcomeText">Vẽ vòng tròn càng tròn càng tốt trong 10 lượt. Đạt 1500 điểm để mở thử thách tiếp theo!</p>
     <div style="margin-top:12px">
       <button id="welcomeOk">Bắt đầu luyện ▶</button>
@@ -417,8 +419,14 @@ const CONFIG = {
   assets: {
     bg1: 'https://puonglee269.github.io/Magic-Circle-Game/assets/IMG_1760851839026_1760856501391.jpg',
     bg2: 'https://puonglee269.github.io/Magic-Circle-Game/assets/IMG_1760851839026_1760856501391.jpg',
-    bg3: 'https://puonglee269.github.io/Magic-Circle-Game/assets/your_meadow_bg3.jpg', // thêm BG3
-    bgm: 'https://puonglee269.github.io/Magic-Circle-Game/assets/bgm.mp3',
+    bg3: 'https://puonglee269.github.io/Magic-Circle-Game/assets/Emotion/c65da843bdbf6eb76173bae2a0bd5f50.jpg', // thêm BG3
+    bgm: [
+      'https://puonglee269.github.io/Magic-Circle-Game/assets/SFX/Dark Forest.mp3',  // Thay URL bài 1
+      'https://puonglee269.github.io/Magic-Circle-Game/assets/SFX/Dark Forest 2.mp3',  // Thay URL bài 2
+      'https://puonglee269.github.io/Magic-Circle-Game/assets/SFX/Magical Fairy Tale.mp3',  // Thay URL bài 3
+      'https://puonglee269.github.io/Magic-Circle-Game/assets/SFX/The Crystal Cave_01.mp3',  // Thay URL bài 4
+      'https://puonglee269.github.io/Magic-Circle-Game/assets/SFX/Wonderland.mp3'   // Thay URL bài 5
+    ],
   },
   fonts: {
     heading: "'Texturina', ui-serif, Georgia, serif",
@@ -431,7 +439,7 @@ const CONFIG = {
   greeting: {
     icon: 'https://puonglee269.github.io/Magic-Circle-Game/assets/Emotion/ChatGPT%20Image%2017_37_09%2020%20thg%2010%2C%202025.png',
     sound: 'https://puonglee269.github.io/Magic-Circle-Game/assets/SFX/Dark%20Forest.mp3',
-    title: 'Chào mừng Pháp sư!',
+    title: 'Chào mừng Pháp sư Te!',
     text: 'Bạn đang ở trong khu rừng nguy hiểm. Hãy vẽ vòng tròn ma thuật trong 10 lượt và đạt 1500 điểm để mở cổng không gian!'
   },
   hiEffects: {
@@ -586,7 +594,7 @@ const nameModal=document.getElementById('nameModal'), nameInput=document.getElem
 const leaderTable=document.querySelector('#leaderTable tbody');
 const restLayer=document.getElementById('restLayer'), restPracticeBtn=document.getElementById('restPracticeBtn'), restNextBtn=document.getElementById('restNextBtn'), restResetBtn=document.getElementById('restResetBtn'), restLeaderBody=document.querySelector('#restLeaderTable tbody');
 const greetBgm=document.getElementById('greetBgm'), bgmEl=document.getElementById('bgm'), sfxEl=document.getElementById('sfx');
-const bgmToggle=document.getElementById('bgmToggle'), bgmVol=document.getElementById('bgmVol');
+const bgmToggle=document.getElementById('bgmToggle'), bgmVol=document.getElementById('bgmVol'), bgmNext=document.getElementById('bgmNext');
 const diffToggle=document.getElementById('diffToggle');
 const winLayer=document.getElementById('winLayer'), winGif=document.getElementById('winGif'), winAudio=document.getElementById('winAudio'), winMsg=document.getElementById('winMsg'), winYes=document.getElementById('winYes'), winNo=document.getElementById('winNo');
 const welcome=document.getElementById('welcome'), welcomeIcon=document.getElementById('welcomeIcon'), welcomeTitle=document.getElementById('welcomeTitle'), welcomeText=document.getElementById('welcomeText'), welcomeOk=document.getElementById('welcomeOk');
@@ -615,6 +623,10 @@ let lastDrawPos = null;        // dùng tính tốc độ & tia lửa
 // Hệ thống hạt
 const sparks = [];             // mảng particle
 const MAX_SPARKS = 400;
+
+// ===== BGM Playlist =====
+let bgmIndex = 0;
+let bgmTracks = CONFIG.assets.bgm;
 
 /* ===== Scale canvas (Safari safe) ===== */
 function scaleCanvas(){
@@ -769,7 +781,6 @@ function stopSizzle(){
 
 /* ===== Greeting BGM (mở đầu) + Game BGM ===== */
 greetBgm.src = CONFIG.greeting.sound; greetBgm.crossOrigin = "anonymous";
-bgmEl.src = CONFIG.assets.bgm; bgmEl.crossOrigin = "anonymous";
 
 async function tryPlay(el){
   try{ await el.play(); }catch(e){
@@ -794,7 +805,15 @@ function stopGreetingBgm(){
   try{ greetBgm.pause(); }catch(_){}
 }
 function startGameBgm(){
-  tryPlay(bgmEl);
+  loadBgmTrack(bgmIndex);
+}
+function loadBgmTrack(index) {
+  bgmIndex = index % bgmTracks.length;
+  bgmEl.src = bgmTracks[bgmIndex];
+  bgmEl.crossOrigin = "anonymous";
+  if (!bgmEl.paused) {
+    bgmEl.play().catch(() => {});
+  }
 }
 function setBgmUi(){ bgmToggle.textContent=(bgmEl.paused?'Bật nhạc ♪':'Tắt nhạc ⏸'); }
 function initBgm(){
@@ -803,10 +822,16 @@ function initBgm(){
   bgmVol.value=String(bgmEl.volume);
   // KHÔNG tự play bgmEl ở đầu — chỉ greeting phát trước
   setBgmUi();
+  // Load track đầu tiên
+  loadBgmTrack(0);
 }
 bgmToggle.addEventListener('click', async ()=>{
   if(bgmEl.paused){ try{ await bgmEl.play(); }catch(_){ } } else { bgmEl.pause(); }
   setBgmUi();
+});
+bgmNext.addEventListener('click', () => {
+  const nextIndex = bgmIndex + 1;
+  loadBgmTrack(nextIndex);
 });
 bgmVol.addEventListener('input', ()=>{
   const v=parseFloat(bgmVol.value||'0.5');
@@ -1207,4 +1232,3 @@ welcomeOk.addEventListener('click', ()=>{
 </script>
 </body>
 </html>
-```
